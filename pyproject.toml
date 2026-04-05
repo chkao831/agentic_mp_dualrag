@@ -1,0 +1,24 @@
+[project]
+name = "agentic-mp-dualrag"
+version = "0.1.0"
+description = "Fed MPR agentic RAG — FastAPI backend, data pipeline, Streamlit UI."
+readme = "README.md"
+requires-python = ">=3.10"
+# Unpinned names: exact versions are recorded in uv.lock (run `uv lock` / `uv sync`).
+dependencies = [
+    "anthropic",
+    "beautifulsoup4",
+    "chromadb",
+    "fastapi",
+    "httpx",
+    "lxml",
+    "pyoxigraph",
+    "python-dotenv",
+    "requests",
+    "streamlit",
+    "uvicorn[standard]",
+]
+
+[tool.uv]
+# Multiple top-level folders (backend, data_pipeline, …); do not build a wheel.
+package = false

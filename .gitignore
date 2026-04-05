@@ -1,0 +1,17 @@
+# uv / Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets
+.env
+
+# Generated data (keep .gitkeep)
+data/chroma_db/**
+data/oxigraph_db/**
+data/intermediate_json/**
+!**/.gitkeep

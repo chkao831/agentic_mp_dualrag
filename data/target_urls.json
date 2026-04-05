@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "purpose": "Fed MPR HTML sources for scraping. Semiannual reports use a stable URL pattern; each edition lists explicit section files.",
+    "catalog": "https://www.federalreserve.gov/monetarypolicy/mpr_default.htm",
+    "url_pattern": "https://www.federalreserve.gov/monetarypolicy/{edition}-mpr-{slug}.htm",
+    "maintenance": "For a new report: (1) Open the catalog page and the edition's branch page. (2) Copy each HTML link (skip *-accessible.htm duplicates unless you need them). (3) Add a new object under releases with edition matching the filename prefix (e.g. 2025-12). (4) Set scrape false on old editions if you only want the latest in the index. By default we omit Data Notes and Abbreviations (low narrative value for Q&A); add them only if you need glossary or methodology text."
+  },
+  "url_base": "https://www.federalreserve.gov/monetarypolicy/",
+  "releases": [
+    {
+      "edition": "2025-06",
+      "label": "Monetary Policy Report — June 2025 (submitted June 20, 2025)",
+      "scrape": true,
+      "sections": [
+        {
+          "id": "statement",
+          "title": "Statement on Longer Run Goals",
+          "path": "2025-06-mpr-statement.htm"
+        },
+        {
+          "id": "summary",
+          "title": "Summary",
+          "path": "2025-06-mpr-summary.htm"
+        },
+        {
+          "id": "part1",
+          "title": "Recent Economic and Financial Developments",
+          "path": "2025-06-mpr-part1.htm"
+        },
+        {
+          "id": "part2",
+          "title": "Monetary Policy",
+          "path": "2025-06-mpr-part2.htm"
+        },
+        {
+          "id": "part3",
+          "title": "Summary of Economic Projections",
+          "path": "2025-06-mpr-part3.htm"
+        }
+      ]
+    }
+  ]
+}
