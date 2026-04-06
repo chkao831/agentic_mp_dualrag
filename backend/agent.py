@@ -82,12 +82,17 @@ def stream_agent_turns(
         "Use the search_mpr_vector tool to retrieve relevant passages from the Monetary Policy Report. "
         "When you cite facts, use clickable Markdown links using the exact Source URL lines "
         "returned by the tool, e.g. [MPR source](https://www.federalreserve.gov/...). "
-        "Never invent URLs."
+        "Never invent URLs.\n\n"
+        "Format answers for readability: use short ## section headings for longer replies; "
+        "use GitHub-flavored Markdown tables for small comparisons (e.g. years or metrics). "
+        "Use ![description](url) only when the URL is a direct image file (e.g. ends in .png, .jpg, .svg, or "
+        "is clearly an image asset); do not use image syntax for ordinary HTML report pages."
     )
     tools = load_skill_tool_defs()
     messages: list[dict] = [{"role": "user", "content": user_text}]
 
     max_turns = 12
+    prior_text = False
     for _ in range(max_turns):
         msg = client.messages.create(
             model=model,
@@ -107,7 +112,11 @@ def stream_agent_turns(
                 tool_uses.append(block)
 
         if text_parts:
-            yield "".join(text_parts)
+            chunk = "".join(text_parts)
+            if prior_text:
+                chunk = "\n\n" + chunk
+            prior_text = True
+            yield chunk
 
         if not tool_uses:
             break

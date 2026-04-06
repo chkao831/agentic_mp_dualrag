@@ -19,13 +19,38 @@ TARGETS = ROOT / "data" / "target_urls.json"
 OUT_DIR = ROOT / "data" / "intermediate_json"
 
 
+def _img_block(el, page_url: str) -> dict | None:
+    """One block per <img> with absolute URL in text (for grep, retrieval, and ![](...) citations)."""
+    raw = (el.get("src") or el.get("data-src") or "").strip()
+    if not raw or raw.startswith("data:"):
+        return None
+    abs_url = urljoin(page_url, raw)
+    alt = (el.get("alt") or "").strip()
+    title = (el.get("title") or "").strip()
+    lines = [f"Image URL: {abs_url}"]
+    if alt:
+        lines.append(f"Alt text: {alt}")
+    if title and title != alt:
+        lines.append(f"Title: {title}")
+    return {
+        "tag": "img",
+        "text": "\n".join(lines),
+        "source_url": page_url,
+    }
+
+
 def extract_main_content(soup: BeautifulSoup, page_url: str) -> list[dict]:
-    """Placeholder: refine selector against live Fed DOM (e.g. #article or main)."""
+    """Extract text blocks and <img> URLs from main article DOM (document order)."""
     blocks: list[dict] = []
     main = soup.find("div", id="article") or soup.find("main") or soup.body
     if not main:
         return blocks
-    for el in main.find_all(["p", "h2", "h3", "table"]):
+    for el in main.find_all(["p", "h2", "h3", "table", "img"]):
+        if el.name == "img":
+            row = _img_block(el, page_url)
+            if row:
+                blocks.append(row)
+            continue
         tag = el.name
         text = el.get_text(" ", strip=True)
         if not text:

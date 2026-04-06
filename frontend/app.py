@@ -10,11 +10,55 @@ from __future__ import annotations
 
 import json
 import os
+import re
+from urllib.parse import urlparse
 
 import httpx
 import streamlit as st
 
 BACKEND = os.environ.get("MPR_BACKEND_URL", "http://127.0.0.1:8000")
+
+_MD_LINK_URL = re.compile(r"!?\[[^\]]*\]\((https?://[^)\s]+)\)")
+_BARE_URL = re.compile(r"https?://[^\s\)`'\"<>]+")
+
+
+def extract_http_urls(text: str) -> list[str]:
+    """Collect http(s) URLs from markdown links and bare text; preserve order, dedupe."""
+    raw: list[str] = []
+    for m in _MD_LINK_URL.finditer(text):
+        raw.append(m.group(1).rstrip(").,;]"))
+    for m in _BARE_URL.finditer(text):
+        raw.append(m.group(0).rstrip(").,;]"))
+    out: list[str] = []
+    seen: set[str] = set()
+    for u in raw:
+        if u and u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+
+def _url_label(url: str, max_len: int = 72) -> str:
+    try:
+        p = urlparse(url)
+        label = f"{p.netloc}{p.path or ''}" or url
+        if p.query:
+            label = f"{label}?{p.query[:24]}"
+    except Exception:
+        label = url
+    if len(label) > max_len:
+        return label[: max_len - 1] + "…"
+    return label
+
+
+def render_assistant_reply(markdown_text: str) -> None:
+    st.markdown(markdown_text)
+    urls = extract_http_urls(markdown_text)
+    if not urls:
+        return
+    with st.expander("Sources", expanded=False):
+        lines = [f"{i + 1}. [{_url_label(u)}]({u})" for i, u in enumerate(urls)]
+        st.markdown("\n".join(lines))
 
 
 def stream_chat(message: str):
@@ -54,7 +98,10 @@ if "messages" not in st.session_state:
 
 for role, content in st.session_state.messages:
     with st.chat_message(role):
-        st.markdown(content)
+        if role == "assistant":
+            render_assistant_reply(content)
+        else:
+            st.markdown(content)
 
 prompt = st.chat_input("Ask about the Monetary Policy Report…")
 if prompt:
@@ -73,12 +120,23 @@ if prompt:
                 elif kind == "token":
                     assistant_parts.append(payload.get("text", ""))
             status.update(label="Done", state="complete")
+        except httpx.ConnectError as e:
+            status.update(label="Error", state="error")
+            st.error(
+                f"Cannot reach the API at `{BACKEND}` (connection refused). "
+                "Keep the FastAPI server running **in a separate terminal** while you use this app, then retry."
+            )
+            st.code(
+                "uv run --env-file .env python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000",
+                language="bash",
+            )
+            assistant_parts = [f"_(Request failed: {e})_"]
         except Exception as e:
             status.update(label="Error", state="error")
             st.error(str(e))
             assistant_parts = [f"_(Request failed: {e})_"]
 
         final_text = "".join(assistant_parts)
-        st.markdown(final_text)
+        render_assistant_reply(final_text)
 
     st.session_state.messages.append(("assistant", final_text))
