@@ -14,4 +14,5 @@ __pycache__/
 data/chroma_db/**
 data/oxigraph_db/**
 data/intermediate_json/**
+data/intermediate_graph_json/**
 !**/.gitkeep

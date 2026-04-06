@@ -25,7 +25,7 @@ def main() -> None:
 
     if not CHROMA_PATH.exists():
         print(
-            "ChromaDB path missing. Run data_pipeline/build_vector_db.py first.",
+            "ChromaDB missing at data/chroma_db/. Build or copy an index there (see README).",
             file=sys.stderr,
         )
         sys.exit(1)

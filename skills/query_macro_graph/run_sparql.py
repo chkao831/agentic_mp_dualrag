@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Placeholder SPARQL executor against pyoxigraph Store (subprocess target)."""
+"""Run SPARQL against the local Oxigraph store; stdout one line per result (TSV for SELECT)."""
 from __future__ import annotations
 
 import argparse
@@ -16,30 +16,35 @@ def main() -> None:
     args = p.parse_args()
 
     try:
-        from pyoxigraph import Store
+        from pyoxigraph import QueryBoolean, QuerySolutions, QueryTriples, Store
     except ImportError:
         print("pyoxigraph not installed", file=sys.stderr)
         sys.exit(1)
 
     if not RDF_DIR.exists() or not any(RDF_DIR.iterdir()):
-        print(
-            "RDF store empty or missing. Run data_pipeline/build_rdf_graph.py after populating JSON.",
-            file=sys.stderr,
-        )
-        # Still exit 0 with message so the agent can explain TBD state
-        print("GraphRAG: TBD — no triples loaded yet.")
-        print(f"Source URL: https://www.federalreserve.gov/monetarypolicy/mpr_default.htm")
-        return
+        print("empty RDF store at data/oxigraph_db/ — populate it (see README).", file=sys.stderr)
+        sys.exit(1)
 
-    store = Store(path=str(RDF_DIR))
+    store = Store.read_only(str(RDF_DIR))
     try:
         results = store.query(args.sparql)
     except Exception as e:
         print(f"SPARQL error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    for row in results:
-        print(row)
+    if isinstance(results, QueryBoolean):
+        print(str(bool(results)).lower())
+        return
+    if isinstance(results, QuerySolutions):
+        vars_ = list(results.variables)
+        for row in results:
+            print("\t".join(str(row[i]) for i in range(len(vars_))))
+        return
+    if isinstance(results, QueryTriples):
+        for triple in results:
+            print(triple)
+        return
+    print(results, file=sys.stderr)
 
 
 if __name__ == "__main__":

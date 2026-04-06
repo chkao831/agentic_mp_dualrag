@@ -12,6 +12,8 @@ from collections.abc import Iterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
+from typing import Literal
+
 from pydantic import BaseModel
 
 from backend.agent import stream_agent_turns
@@ -27,19 +29,21 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     message: str
+    # Overrides ANTHROPIC_MODEL for this request; sonnet = default quality, haiku = lower cost.
+    model: Literal["sonnet", "haiku"] | None = None
 
 
 def sse_line(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
-def sse_events(user_message: str) -> Iterator[str]:
+def sse_events(user_message: str, *, model: str | None = None) -> Iterator[str]:
     status_buffer: list[dict] = []
 
     def on_tool_event(ev: dict) -> None:
         status_buffer.append(ev)
 
-    for chunk in stream_agent_turns(user_message, on_tool_event=on_tool_event):
+    for chunk in stream_agent_turns(user_message, model=model, on_tool_event=on_tool_event):
         while status_buffer:
             ev = status_buffer.pop(0)
             yield sse_line("status", ev)
@@ -69,7 +73,7 @@ async def root():
 @app.post("/chat/stream")
 async def chat_stream(body: ChatRequest):
     return StreamingResponse(
-        sse_events(body.message),
+        sse_events(body.message, model=body.model),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

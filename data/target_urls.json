@@ -1,9 +1,6 @@
 {
   "_meta": {
-    "purpose": "Fed MPR HTML sources for scraping. Semiannual reports use a stable URL pattern; each edition lists explicit section files.",
-    "catalog": "https://www.federalreserve.gov/monetarypolicy/mpr_default.htm",
-    "url_pattern": "https://www.federalreserve.gov/monetarypolicy/{edition}-mpr-{slug}.htm",
-    "maintenance": "For a new report: (1) Open the catalog page and the edition's branch page. (2) Copy each HTML link (skip *-accessible.htm duplicates unless you need them). (3) Add a new object under releases with edition matching the filename prefix (e.g. 2025-12). (4) Set scrape false on old editions if you only want the latest in the index. By default we omit Data Notes and Abbreviations (low narrative value for Q&A); add them only if you need glossary or methodology text."
+    "purpose": "Tells the chat agent which MPR edition is indexed (vector + graph). Edit `releases` when you point `data/chroma_db/` and `data/oxigraph_db/` at a different report."
   },
   "url_base": "https://www.federalreserve.gov/monetarypolicy/",
   "releases": [
