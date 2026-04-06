@@ -43,7 +43,7 @@ def resolve_anthropic_model(preset_or_id: str | None) -> str:
 ALLOWED_SCRIPTS: dict[str, Path] = {
     "search_mpr_vector": SKILLS_DIR / "search_mpr_vector" / "query_chroma.py",
     "query_macro_graph": SKILLS_DIR / "query_macro_graph" / "run_sparql.py",
-    "list_mpr_data_series": SKILLS_DIR / "query_macro_graph" / "list_data_series.py",
+    "list_mpr_data_series": SKILLS_DIR / "list_mpr_data_series" / "list_data_series.py",
 }
 
 
@@ -94,7 +94,8 @@ def load_skill_tool_defs() -> list[dict]:
                 "list_mpr_data_series often returns year-like series_label; measure names are in figure_label — filter via "
                 "join to eco:ChartFigure rdfs:label or use listed series IRIs. Fed '-' placeholder cells are omitted from "
                 "the graph; use FILTER(datatype(?value)=xsd:decimal) for numeric-only rows. Duplicate figure titles may "
-                "differ only by case (e.g. real GDP vs Real GDP). See skills/query_macro_graph/SKILL.md."
+                "differ only by case (e.g. real GDP vs Real GDP). See skills/query_macro_graph/SKILL.md; "
+                "discovery: skills/list_mpr_data_series/SKILL.md."
             ),
             "input_schema": {
                 "type": "object",
@@ -197,7 +198,8 @@ def stream_agent_turns(
         "SPARQL must use PREFIX eco: <https://example.org/macro#> exactly (not qudt.org). "
         "Observations: eco:period, eco:value, eco:inSeries, eco:statedIn. "
         "Series list columns are often **years**; **PCE/CPI** text is usually on the **figure** label — join ?series eco:inFigure ?fig "
-        "and FILTER on ?fig rdfs:label, or copy the example in skills/query_macro_graph/SKILL.md.\n"
+        "and FILTER on ?fig rdfs:label, or copy examples in skills/query_macro_graph/SKILL.md. "
+        "Series discovery: skills/list_mpr_data_series/SKILL.md.\n"
         "3. Do **not** use graph tools alone for vague \"trend\" questions without first narrowing which measure "
         "the MPR uses.\n\n"
         "When you cite facts from vector search, use clickable Markdown links from the exact **Source URL** lines, "

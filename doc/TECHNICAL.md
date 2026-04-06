@@ -23,8 +23,8 @@ flowchart LR
   end
   subgraph tools_subprocess["Skills (subprocess, allowlisted)"]
     V[search_mpr_vector]
-    G1[list_mpr_data_series]
-    G2[query_macro_graph]
+    G1[list_mpr_data_series\nskills/list_mpr_data_series/]
+    G2[query_macro_graph\nskills/query_macro_graph/]
   end
   subgraph data
     CH[(ChromaDB\nmpr_chunks)]
@@ -111,7 +111,7 @@ sequenceDiagram
 
 ## 4. Graph skills — how they work
 
-**Tools:** `list_mpr_data_series` → `list_data_series.py`; `query_macro_graph` → `run_sparql.py`
+**Tools:** `list_mpr_data_series` → `skills/list_mpr_data_series/list_data_series.py`; `query_macro_graph` → `skills/query_macro_graph/run_sparql.py`
 
 | Aspect | Implementation |
 |--------|----------------|
@@ -187,8 +187,9 @@ The two indices are **not merged** at retrieval time: the **LLM** combines evide
 | `frontend/app.py` | Streamlit client for `/chat/stream`. |
 | `skills/search_mpr_vector/query_chroma.py` | Chroma query CLI. |
 | `skills/query_macro_graph/run_sparql.py` | SPARQL CLI. |
-| `skills/query_macro_graph/list_data_series.py` | Series discovery SPARQL CLI. |
-| `skills/query_macro_graph/SKILL.md` | Extended SPARQL examples and orchestration notes for authors. |
+| `skills/query_macro_graph/SKILL.md` | SPARQL examples and graph-tool orchestration. |
+| `skills/list_mpr_data_series/list_data_series.py` | Series discovery (fixed SPARQL). |
+| `skills/list_mpr_data_series/SKILL.md` | Discovery tool notes for authors. |
 
 ---
 

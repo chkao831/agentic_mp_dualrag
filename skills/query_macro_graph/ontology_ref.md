@@ -33,4 +33,4 @@
 | `eco:OutlineSection` | `h3` subsection. |
 | `eco:EmbeddedFigure` | Image URL / alt from `img` blocks. |
 
-Use **`list_mpr_data_series`** before SPARQL when you need series IRIs and labels.
+Use **`list_mpr_data_series`** (`skills/list_mpr_data_series/`) before ad hoc SPARQL when you need series IRIs and labels.

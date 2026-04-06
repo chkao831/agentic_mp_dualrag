@@ -12,7 +12,7 @@ This repo is **runtime-only**: there is no ingest pipeline here. You need a popu
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.10+
 - **`data/chroma_db/`** — Chroma collection `mpr_chunks` (see `skills/search_mpr_vector/query_chroma.py`)
-- **`data/oxigraph_db/`** — Oxigraph store for SPARQL (see `skills/query_macro_graph/run_sparql.py`)
+- **`data/oxigraph_db/`** — Oxigraph store (see `skills/query_macro_graph/run_sparql.py`, `skills/list_mpr_data_series/list_data_series.py`)
 - **`data/target_urls.json`** — which edition is indexed (shown in the agent system prompt)
 
 ---
@@ -55,7 +55,7 @@ uv run --env-file .env streamlit run frontend/app.py
 |------|------|
 | `backend/` | FastAPI + Anthropic loop + SSE |
 | `frontend/app.py` | Chat UI |
-| `skills/` | Subprocess tools the agent invokes |
+| `skills/` | Subprocess tools (`search_mpr_vector`, `list_mpr_data_series`, `query_macro_graph`) |
 | `data/` | `target_urls.json` + generated stores (see `.gitignore`) |
 | `doc/TECHNICAL.md` | Architecture, Mermaid diagrams, vector vs graph methodology |
 
