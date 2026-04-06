@@ -185,6 +185,7 @@ The two indices are **not merged** at retrieval time: the **LLM** combines evide
 | `backend/agent.py` | Model resolution, tool defs, subprocess runner, system prompt, loop. |
 | `backend/main.py` | FastAPI app, SSE framing. |
 | `frontend/app.py` | Streamlit client for `/chat/stream`. |
+| `frontend/graph_tools_viz.py` | Optional: visualize `list_mpr_data_series` TSV + `query_macro_graph` SPARQL from pasted SSE JSON. |
 | `skills/search_mpr_vector/query_chroma.py` | Chroma query CLI. |
 | `skills/query_macro_graph/run_sparql.py` | SPARQL CLI. |
 | `skills/query_macro_graph/SKILL.md` | SPARQL examples and graph-tool orchestration. |

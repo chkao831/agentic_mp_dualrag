@@ -274,11 +274,12 @@ def stream_agent_turns(
                 )
             result = run_skill_script(tu.name, payload)
             if on_tool_event:
+                preview_cap = 4000 if tu.name == "list_mpr_data_series" else 500
                 on_tool_event(
                     {
                         "type": "tool_result",
                         "name": tu.name,
-                        "output_preview": result[:500],
+                        "output_preview": result[:preview_cap],
                     }
                 )
             tool_results.append(

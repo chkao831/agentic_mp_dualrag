@@ -47,6 +47,12 @@ uv run --env-file .env streamlit run frontend/app.py
 - Chat: Streamlit (default port 8501).  
 - API: `http://127.0.0.1:8000/docs` (Swagger), `/health` ping.
 
+**Graph tool inspector** (optional): paste tool JSON or SSE (PyVis **series → figure** graph); orphan **`query_macro_graph`** SPARQL includes **Run on local Oxigraph** inline against `data/oxigraph_db/`.
+
+```bash
+uv run streamlit run frontend/graph_tools_viz.py --server.port 8502
+```
+
 ---
 
 ## Layout
@@ -55,6 +61,7 @@ uv run --env-file .env streamlit run frontend/app.py
 |------|------|
 | `backend/` | FastAPI + Anthropic loop + SSE |
 | `frontend/app.py` | Chat UI |
+| `frontend/graph_tools_viz.py` | Inspect graph-tool TSV / SPARQL from pasted logs |
 | `skills/` | Subprocess tools (`search_mpr_vector`, `list_mpr_data_series`, `query_macro_graph`) |
 | `data/` | `target_urls.json` + generated stores (see `.gitignore`) |
 | `doc/TECHNICAL.md` | Architecture, Mermaid diagrams, vector vs graph methodology |
