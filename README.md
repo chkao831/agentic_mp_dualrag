@@ -35,6 +35,14 @@ cp .env.example .env
 
 ---
 
+## Demo
+
+[![I. Intro](https://img.youtube.com/vi/yQ0MQ0_8F5Q/maxresdefault.jpg)](https://youtu.be/yQ0MQ0_8F5Q)
+
+
+
+---
+
 ## Run the chat app
 
 ```bash
