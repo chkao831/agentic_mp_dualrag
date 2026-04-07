@@ -26,11 +26,11 @@ ANTHROPIC_MODEL_HAIKU = "claude-haiku-4-5-20251001"
 def resolve_anthropic_model(preset_or_id: str | None) -> str:
     """
     Map short names to API ids, or pass through a full model string.
-    When preset_or_id is None/empty, uses env ANTHROPIC_MODEL, defaulting to sonnet.
+    When preset_or_id is None/empty, uses env ANTHROPIC_MODEL, defaulting to haiku.
     """
     raw = (preset_or_id or "").strip() or os.environ.get("ANTHROPIC_MODEL", "").strip()
     if not raw:
-        return ANTHROPIC_MODEL_SONNET
+        return ANTHROPIC_MODEL_HAIKU
     key = raw.lower()
     if key == "sonnet":
         return ANTHROPIC_MODEL_SONNET

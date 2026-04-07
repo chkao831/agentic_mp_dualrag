@@ -27,7 +27,7 @@ cp .env.example .env
 | Variable | Required | Notes |
 |----------|----------|--------|
 | `ANTHROPIC_API_KEY` | Yes | [Anthropic Console](https://console.anthropic.com/) |
-| `ANTHROPIC_MODEL` | No | Default `sonnet` or `haiku` (Streamlit sidebar overrides per request). |
+| `ANTHROPIC_MODEL` | No | Default `haiku` (or `sonnet`); Streamlit sidebar overrides per request. |
 | `MPR_BACKEND_URL` | No | If the API is not `http://127.0.0.1:8000`. |
 | `MPR_ASSISTANT_TODAY` | No | ISO date in the system prompt (else server date). |
 

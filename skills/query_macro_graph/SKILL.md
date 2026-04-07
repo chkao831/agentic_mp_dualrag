@@ -73,3 +73,7 @@ LIMIT 200
 ## Output contract
 
 Same as `run_sparql.py`: no header row unless your query projects one; TSV columns match solution variables.
+
+### Chat UI time-series plot (Streamlit)
+
+When the SPARQL fixes one series with a **ground IRI** — e.g. `?obs eco:inSeries <https://example.org/macro#series_…> { … }` — the main chat replays the same **Oxigraph observation pull** as `graph_tools_viz.py` (decimal `eco:period` × `eco:value`) and draws a **line chart** under the reply. Prefer that pattern for single-series pulls; `VALUES ?series { <…> }` is also detected.

@@ -29,7 +29,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     message: str
-    # Overrides ANTHROPIC_MODEL for this request; sonnet = default quality, haiku = lower cost.
+    # Overrides ANTHROPIC_MODEL for this request; backend default is haiku when unset.
     model: Literal["sonnet", "haiku"] | None = None
 
 

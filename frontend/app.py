@@ -16,7 +16,30 @@ from urllib.parse import urlparse
 import httpx
 import streamlit as st
 
+import oxigraph_series_chart
+
 BACKEND = os.environ.get("MPR_BACKEND_URL", "http://127.0.0.1:8000")
+
+
+def _unpack_message(entry: tuple) -> tuple[str, str, list[str]]:
+    """
+    Legacy: (role, content). Assistant with Oxigraph replot: (assistant, content, series_iris: list[str]).
+    """
+    if len(entry) >= 3 and entry[0] == "assistant":
+        extra = entry[2]
+        if isinstance(extra, list) and all(isinstance(x, str) for x in extra):
+            return entry[0], entry[1], extra
+        return entry[0], entry[1], []
+    return entry[0], entry[1], []
+
+
+def _render_assistant_message(content: str, series_iris: list[str]) -> None:
+    render_assistant_reply(content)
+    to_plot = [x for x in dict.fromkeys(series_iris) if (x or "").strip()]
+    if not to_plot:
+        to_plot = oxigraph_series_chart.extract_all_series_iris_from_text(content)
+    for iri in to_plot:
+        oxigraph_series_chart.render_observations_line_chart_for_series(iri)
 
 _MD_LINK_URL = re.compile(r"!?\[[^\]]*\]\((https?://[^)\s]+)\)")
 _BARE_URL = re.compile(r"https?://[^\s\)`'\"<>]+")
@@ -157,7 +180,7 @@ def render_assistant_reply(markdown_text: str) -> None:
         st.markdown("\n".join(lines))
 
 
-def stream_chat(message: str, model: str = "sonnet"):
+def stream_chat(message: str, model: str = "haiku"):
     """Yields (kind, payload) where kind is 'status' | 'token'."""
     url = f"{BACKEND.rstrip('/')}/chat/stream"
     with httpx.stream(
@@ -202,20 +225,21 @@ section[data-testid="stChatMessage"] div[data-testid="stMarkdownContainer"] {
 """,
     unsafe_allow_html=True,
 )
-st.title("Federal Reserve MPR — Agentic Dual-RAG (skeleton)")
+st.title("Federal Reserve MPR Agent")
 
 with st.sidebar:
     st.subheader("Model")
     _model_help = (
-        "Backend default when unset: `ANTHROPIC_MODEL` in `.env` (`sonnet` or `haiku`), else Sonnet. "
+        "Backend default when unset: `ANTHROPIC_MODEL` in `.env` (`sonnet` or `haiku`), else Haiku. "
         "This control overrides that for each chat request."
     )
     model_preset = st.radio(
         "Claude",
         options=["sonnet", "haiku"],
         format_func=lambda m: (
-            "Sonnet 4 — stronger (default)" if m == "sonnet" else "Haiku 4.5 — lower cost"
+            "Sonnet 4.6 — stronger" if m == "sonnet" else "Haiku 4.5 — lower cost (default)"
         ),
+        index=1,
         key="mpr_claude_model",
         help=_model_help,
     )
@@ -223,10 +247,11 @@ with st.sidebar:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-for role, content in st.session_state.messages:
+for entry in st.session_state.messages:
+    role, content, series_iris = _unpack_message(entry)
     with st.chat_message(role):
         if role == "assistant":
-            render_assistant_reply(content)
+            _render_assistant_message(content, series_iris)
         else:
             st.markdown(normalize_assistant_markdown(content))
 
@@ -239,9 +264,28 @@ if prompt:
     with st.chat_message("assistant"):
         assistant_parts: list[str] = []
         status = st.status("Agent steps…", expanded=True)
+        pending_macro_sparql: list[str] = []
+        series_iris_to_plot: list[str] = []
         try:
             for kind, payload in stream_chat(prompt, model=model_preset):
                 if kind == "status":
+                    ev_type = payload.get("type")
+                    if ev_type == "tool_use" and payload.get("name") == "query_macro_graph":
+                        inp = payload.get("input") or {}
+                        q = inp.get("sparql")
+                        if isinstance(q, str) and q.strip():
+                            pending_macro_sparql.append(q.strip())
+                    elif ev_type == "tool_result" and payload.get("name") == "query_macro_graph":
+                        spq = (
+                            pending_macro_sparql.pop(0)
+                            if pending_macro_sparql
+                            else None
+                        )
+                        iri = oxigraph_series_chart.extract_series_iri_from_macro_sparql(
+                            spq or ""
+                        )
+                        if iri and iri not in series_iris_to_plot:
+                            series_iris_to_plot.append(iri)
                     step = payload.get("step", "")
                     status.write(f"**{step}** — `{json.dumps(payload, indent=0)[:800]}`")
                 elif kind == "token":
@@ -264,6 +308,6 @@ if prompt:
             assistant_parts = [f"_(Request failed: {e})_"]
 
         final_text = "".join(assistant_parts)
-        render_assistant_reply(final_text)
+        _render_assistant_message(final_text, series_iris_to_plot)
 
-    st.session_state.messages.append(("assistant", final_text))
+    st.session_state.messages.append(("assistant", final_text, series_iris_to_plot))
