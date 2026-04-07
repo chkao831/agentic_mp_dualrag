@@ -37,9 +37,15 @@ cp .env.example .env
 
 ## Demo
 
+### I. Intro (1 min)
 [![I. Intro](https://img.youtube.com/vi/yQ0MQ0_8F5Q/maxresdefault.jpg)](https://youtu.be/yQ0MQ0_8F5Q)
 
+### Chatbot Pt.1 (1.5 mins)
 
+- Q. What agent skills do you have?
+- Q. Summarize the 2025 monetary policy in terms of holdings of Treasury securities.
+  
+[![II. Chatbot Pt.1](https://img.youtube.com/vi/mOgJSKOhMcM/maxresdefault.jpg)](https://youtu.be/mOgJSKOhMcM)
 
 ---
 
