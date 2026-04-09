@@ -51,7 +51,13 @@ cp .env.example .env
 
 - Q. Time series over the past 10 years on the nonfuel import price index.
   
-[![II. Chatbot Pt.2](https://img.youtube.com/vi/2IR_BrtJ-z8/maxresdefault.jpg)](https://youtu.be/2IR_BrtJ-z8)
+[![III. Chatbot Pt.2](https://img.youtube.com/vi/2IR_BrtJ-z8/maxresdefault.jpg)](https://youtu.be/2IR_BrtJ-z8)
+
+### IV. Chatbot Pt.3 (1.5 mins)
+
+- Q. * Unemployment rate future projection and a summary of it in the Monetary Policy Report.
+  
+[![IV. Chatbot Pt.3](https://img.youtube.com/vi/yE1ERCyt6wU/maxresdefault.jpg)](https://youtu.be/yE1ERCyt6wU)
 
 
 ---
