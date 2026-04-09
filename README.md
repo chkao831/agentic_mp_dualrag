@@ -55,10 +55,12 @@ cp .env.example .env
 
 ### IV. Chatbot Pt.3 (1.5 mins)
 
-- Q. * Unemployment rate future projection and a summary of it in the Monetary Policy Report.
+- Q. Unemployment rate future projection and a summary of it in the Monetary Policy Report.
   
 [![IV. Chatbot Pt.3](https://img.youtube.com/vi/yE1ERCyt6wU/maxresdefault.jpg)](https://youtu.be/yE1ERCyt6wU)
 
+### V. RDF Knowledge Graph Visualization (1.5 mins)
+[![V. RDF Knowledge Graph Visualization](https://img.youtube.com/vi/AoGtTepW00E/maxresdefault.jpg)](https://youtu.be/AoGtTepW00E)
 
 ---
 
