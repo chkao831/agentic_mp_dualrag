@@ -4,6 +4,45 @@ This document describes the **architecture**, **retrieval methodologies**, and h
 
 ---
 
+## Executive summary
+
+| Layer | What it is | Why it matters |
+|--------|------------|----------------|
+| **Orchestration** | Custom **Anthropic Messages** loop with **tool use** (max 12 turns) | The model decides *when* to search semantically vs when to run **SPARQL**; evidence accumulates in the transcript. |
+| **Vector RAG** | **Chroma** persistent store, collection `mpr_chunks` | Answers “what does the report say about…”, finds **wording**, themes, and **which figures** to investigate. |
+| **Graph RAG** | **Oxigraph** RDF store, **SPARQL 1.1** | Answers “what is the value for period X in series Y”, **joins** figures and series, **aggregates**, and returns **provenance IRIs** for citations. |
+| **Safety** | **Allowlisted** `skills/*.py` only, subprocess + timeouts | The assistant cannot run arbitrary shell; tool names map to fixed scripts and CLI shapes. |
+| **UX** | **FastAPI** SSE (`status` + `token`) → **Streamlit** | Live tool steps and streaming tokens; optional **Knowledge Graph** tab to inspect pasted tool JSON and re-run queries locally. |
+
+**Knowledge-graph angle:** The macro tables from the MPR are modeled as **RDF** (`eco:ChartFigure` → `eco:DataSeries` → `eco:Observation`). That is classic **linked data**: stable IRIs, typed literals, and a query language (**SPARQL**) designed for **structured joins**—not a fuzzy vector space. The **dual-RAG** pattern keeps that separation explicit: similarity lives in Chroma; **truthy cells** and **graph patterns** live in Oxigraph. The **LLM** fuses both by reading tool outputs in context.
+
+```mermaid
+flowchart LR
+  subgraph evidence["Evidence channels"]
+    SEM[Semantic chunks\nparaphrase-friendly]
+    SYM[Graph pattern match\nexact cells + joins]
+  end
+  subgraph fusion["Fusion in the agent"]
+    T[Tool transcripts in context]
+    M[Claude composes answer + citations]
+  end
+  SEM --> T
+  SYM --> T
+  T --> M
+```
+
+---
+
+## Data: Federal Reserve Monetary Policy Report
+
+The **Monetary Policy Report (MPR)** is the Federal Reserve’s periodic report to Congress on economic developments and monetary policy. It combines narrative discussion with **figures and data tables** (labor market, prices, financial conditions, international, projections, and similar themes). Official material is published on [federalreserve.gov](https://www.federalreserve.gov/monetarypolicy/mpr_default.htm).
+
+**How this app uses it:** The chatbot does not crawl the live web at answer time. It searches and queries whatever **edition you have indexed offline**—the same vintage in **Chroma** (text chunks) and **Oxigraph** (structured table cells and provenance), so answers stay consistent with that report. **`data/target_urls.json`** records which URLs/edition the build targeted; the agent’s system prompt is aligned with that metadata so it does not imply fresher data than the index.
+
+**Adding more editions (future years or months):** When you publish a new semi-annual (or other) edition, **rebuild** or **swap** `data/chroma_db/` and `data/oxigraph_db/` (and update `target_urls.json`) for the new vintage. The runtime stack—skills, SPARQL vocabulary, and UI—stays the same; only the underlying corpus and metadata change.
+
+---
+
 ## 1. High-level architecture
 
 The system is **agentic RAG**: a Claude model decides *when* and *how* to call tools, runs multiple turns, and grounds answers in tool output (especially **live Fed URLs**).
@@ -184,8 +223,10 @@ The two indices are **not merged** at retrieval time: the **LLM** combines evide
 |------|---------|
 | `backend/agent.py` | Model resolution, tool defs, subprocess runner, system prompt, loop. |
 | `backend/main.py` | FastAPI app, SSE framing. |
-| `frontend/app.py` | Streamlit client for `/chat/stream`. |
-| `frontend/graph_tools_viz.py` | Optional: visualize `list_mpr_data_series` TSV + `query_macro_graph` SPARQL from pasted SSE JSON. |
+| `frontend/app.py` | Streamlit client for `/chat/stream`; sidebar views **Chatbot**, **Knowledge Graph**, **Technical documentation**. |
+| `frontend/graph_tools_viz.py` | Knowledge Graph panel: TSV + PyVis + local SPARQL; imported by `app.py`. |
+| `frontend/graph_tools_viz_standalone.py` | Same graph inspector in a standalone Streamlit entry (optional port). |
+| `frontend/technical_doc_view.py` | Renders this markdown file with **Mermaid** blocks via an HTML component (CDN). |
 | `skills/search_mpr_vector/query_chroma.py` | Chroma query CLI. |
 | `skills/query_macro_graph/run_sparql.py` | SPARQL CLI. |
 | `skills/query_macro_graph/SKILL.md` | SPARQL examples and graph-tool orchestration. |
@@ -194,7 +235,18 @@ The two indices are **not merged** at retrieval time: the **LLM** combines evide
 
 ---
 
-## 8. References (standards)
+## 8. Sample questions (Chatbot)
+
+Examples that mix **semantic search**, **series discovery**, and **graph-backed numbers**. Wording and dates should match **the edition actually indexed** (e.g. if the store is built from a given year’s report, say that year in the question).
+
+- What agent skills do you have?
+- Summarize the 2025 monetary policy in terms of holdings of Treasury securities.
+- Time series over the past 10 years on the nonfuel import price index.
+- Unemployment rate future projection and a summary of it in the Monetary Policy Report.
+
+---
+
+## 9. References (standards)
 
 - **RDF / SPARQL** — W3C RDF 1.1 and SPARQL 1.1 query algebra (implemented by Oxigraph).
 - **SKOS** — Simple Knowledge Organization System for controlled labels / notations.

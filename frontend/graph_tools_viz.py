@@ -3,8 +3,8 @@ Visualize graph-tool output from the MPR agent: paste SSE `status` JSON or tool 
 
 Helps interpret `list_mpr_data_series` (TSV + figure↔series graph) and `query_macro_graph` (SPARQL).
 
-Run (separate terminal from chat, e.g. port 8502):
-  uv run streamlit run frontend/graph_tools_viz.py --server.port 8502
+In the main app: sidebar → **Knowledge Graph**. Optional standalone (e.g. port 8502):
+  uv run streamlit run frontend/graph_tools_viz_standalone.py --server.port 8502
 """
 from __future__ import annotations
 
@@ -752,9 +752,6 @@ def _render_series_timeseries_block(
     if df.empty or "series_iri" not in df.columns:
         return
     st.subheader("Plot time series")
-    st.caption(
-        "**Hover** or **single-click** a blue **series** node: a bottom panel shows **Selected IRI** (use **Copy** or click the box to select), then paste below (or a bare **http…** IRI)."
-    )
     if not OXIGRAPH_DB.is_dir() or not any(OXIGRAPH_DB.iterdir()):
         st.warning(f"No Oxigraph store at `{OXIGRAPH_DB}`.")
         return
@@ -837,52 +834,35 @@ def _render_list_df(df: pd.DataFrame, trunc_guess: bool, *, ts_state_prefix: str
         _render_series_timeseries_block(df, state_prefix=ts_state_prefix, counts_map=counts_map)
 
 
-st.set_page_config(page_title="MPR graph tools — viz", layout="wide")
-st.title("MPR graph tools — output inspector")
-st.caption(
-    "**list_mpr_data_series**: table + PyVis + **Time series** picker (Oxigraph `eco:period` / `eco:value` per series). "
-    "**query_macro_graph**: paste JSON/SSE, then **Run on local Oxigraph** under each orphan SPARQL block."
-)
-
-with st.sidebar:
-    st.subheader("What am I seeing?")
-    st.markdown(
-        """
-- **`series_iri`** — One `eco:DataSeries` resource in the store.
-- **`series_label`** — Often a **year** or column name, not the measure.
-- **`figure_label`** — Chart title (e.g. unemployment); **PCE/CPI** wording usually here.
-- **Plot** — **Hover** or **click** a series node: bottom panel = **Selected IRI** + **Copy** button. **Paste** under **Plot time series** (or a bare IRI).
-        """
-    )
-    if st.button("Load sample: list_mpr"):
+def render_knowledge_graph_sidebar() -> None:
+    """Sample payloads (use from unified app or standalone)."""
+    if st.button("Load sample: list_mpr", key="gtv_sb_list"):
         st.session_state["gtv_json"] = SAMPLE_LIST_JSON
         st.rerun()
-    if st.button("Load sample: query_macro"):
+    if st.button("Load sample: query_macro", key="gtv_sb_query"):
         st.session_state["gtv_json"] = SAMPLE_QUERY_JSON
         st.rerun()
 
-if "gtv_json" not in st.session_state:
-    st.session_state["gtv_json"] = ""
 
-st.caption(
-    "**Paired** `list_mpr_data_series` `tool_use` + `tool_result` → graph when JSON is valid. "
-    "Chat **truncates** `output_preview` (~4k cap) and often **breaks the string** (missing `\"` at the end) → "
-    "the `tool_result` line **may not parse** → you only see `tool_use` or a partial graph; "
-    "then click **Run `list_data_series.py` locally** (same args)."
-)
-raw = st.text_area(
-    "JSON object, JSON array, NDJSON, or pasted log lines containing `data: {…}`. "
-    "Leading text before the first `{` is ignored (e.g. `**** — ` from Streamlit status).",
-    height=260,
-    key="gtv_json",
-)
-events = _parse_json_blobs(raw)
-if not events and "data:" in raw:
-    events = _parse_sse_data_lines(raw)
+def render_knowledge_graph_main() -> None:
+    """Main panel: paste tool JSON / SSE, render tables, PyVis, SPARQL runner."""
+    if "gtv_json" not in st.session_state:
+        st.session_state["gtv_json"] = ""
 
-if not events:
-    st.info("Paste a `tool_result` / `tool_use` object, or SSE lines with `data: {...}`.")
-else:
+    raw = st.text_area(
+        "JSON object, JSON array, NDJSON, or pasted log lines containing `data: {…}`. "
+        "Leading text before the first `{` is ignored (e.g. `**** — ` from Streamlit status).",
+        height=260,
+        key="gtv_json",
+    )
+    events = _parse_json_blobs(raw)
+    if not events and "data:" in raw:
+        events = _parse_sse_data_lines(raw)
+
+    if not events:
+        st.info("Paste a `tool_result` / `tool_use` object, or SSE lines with `data: {...}`.")
+        return
+
     st.caption(f"Parsed **{len(events)}** object(s).")
 
     list_pairs, orphan_list_inputs = _pair_list_mpr_use_and_result(events)
@@ -927,3 +907,12 @@ else:
             "No `list_mpr_data_series` or `query_macro_graph` events found. "
             "Use `tool_use` / `tool_result` pairs (or at least one recognizable event)."
         )
+
+
+def render_graph_tools_standalone_page() -> None:
+    """Full page when running `streamlit run frontend/graph_tools_viz_standalone.py` (or legacy port)."""
+    st.set_page_config(page_title="MPR graph tools — viz", layout="wide")
+    st.title("MPR graph tools — output inspector")
+    with st.sidebar:
+        render_knowledge_graph_sidebar()
+    render_knowledge_graph_main()

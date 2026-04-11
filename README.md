@@ -4,7 +4,38 @@ Streamlit UI + FastAPI backend. Claude calls allowlisted tools: **Chroma** seman
 
 This repo is **runtime-only**: there is no ingest pipeline here. You need a populated **`data/chroma_db/`** and **`data/oxigraph_db/`** (and `ANTHROPIC_API_KEY`).
 
-**Architecture and methodology:** [`doc/TECHNICAL.md`](doc/TECHNICAL.md) (Mermaid diagrams, vector vs graph skills, RDF model).
+**Architecture and methodology:** [`doc/TECHNICAL.md`](doc/TECHNICAL.md) (Mermaid diagrams, vector vs graph skills, RDF model). The Streamlit app includes a **Technical documentation** tab that renders that file in-app (with diagrams).
+
+---
+
+## What this demonstrates
+
+This project showcases **agentic dual-RAG** over a real policy corpus: **dense retrieval** for narrative and discovery, plus a **knowledge graph** (RDF in Oxigraph) for **exact table cells**, joins, and **provenance** (`eco:statedIn`). The LLM does not query raw databases with free-form SQL; it calls **allowlisted skill scripts** (subprocess) with bounded arguments—reducing risk while keeping queries structured and auditable.
+
+```mermaid
+flowchart TB
+  subgraph skills["Retrieval skills"]
+    V[search_mpr_vector\nChroma — semantic chunks]
+    L[list_mpr_data_series\nSPARQL browse / filter]
+    Q[query_macro_graph\nSPARQL analytics]
+  end
+  subgraph stores["Indices"]
+    CH[(chroma_db)]
+    OX[(oxigraph_db)]
+  end
+  U[User question] --> A[Claude + tool loop]
+  A --> V
+  A --> L
+  A --> Q
+  V --> CH
+  L --> OX
+  Q --> OX
+  CH --> A
+  OX --> A
+  A --> R[Answer with Fed URL citations]
+```
+
+**UI:** one Streamlit app with a sidebar “tab” strip: **Chatbot** (main product), **Knowledge Graph** (paste tool logs → PyVis + local SPARQL), **Technical documentation** (method write-up from `doc/TECHNICAL.md`).
 
 ---
 
@@ -44,13 +75,13 @@ uv run --env-file .env python -m uvicorn backend.main:app --reload --host 0.0.0.
 uv run --env-file .env streamlit run frontend/app.py
 ```
 
-- Chat: Streamlit (default port 8501).  
-- API: `http://127.0.0.1:8000/docs` (Swagger), `/health` ping.
+- **Streamlit** (default port **8501**): sidebar **Chatbot** | **Knowledge Graph** | **Technical documentation**.  
+- **API:** `http://127.0.0.1:8000/docs` (Swagger), `/health` ping.
 
-**Graph tool inspector** (optional): paste tool JSON or SSE (PyVis **series → figure** graph); orphan **`query_macro_graph`** SPARQL includes **Run on local Oxigraph** inline against `data/oxigraph_db/`.
+**Knowledge Graph** (optional second window only): same inspector as the in-app tab.
 
 ```bash
-uv run streamlit run frontend/graph_tools_viz.py --server.port 8502
+uv run streamlit run frontend/graph_tools_viz_standalone.py --server.port 8502
 ```
 
 ---
@@ -60,8 +91,10 @@ uv run streamlit run frontend/graph_tools_viz.py --server.port 8502
 | Path | Role |
 |------|------|
 | `backend/` | FastAPI + Anthropic loop + SSE |
-| `frontend/app.py` | Chat UI |
-| `frontend/graph_tools_viz.py` | Inspect graph-tool TSV / SPARQL from pasted logs |
+| `frontend/app.py` | Chat UI + sidebar views (Chatbot, Knowledge Graph, Technical documentation) |
+| `frontend/graph_tools_viz.py` | Knowledge Graph panel (imported by `app.py`) |
+| `frontend/graph_tools_viz_standalone.py` | Optional standalone Knowledge Graph window |
+| `frontend/technical_doc_view.py` | Renders `doc/TECHNICAL.md` with Mermaid (CDN) |
 | `skills/` | Subprocess tools (`search_mpr_vector`, `list_mpr_data_series`, `query_macro_graph`) |
 | `data/` | `target_urls.json` + generated stores (see `.gitignore`) |
 | `doc/TECHNICAL.md` | Architecture, Mermaid diagrams, vector vs graph methodology |

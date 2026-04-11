@@ -15,25 +15,52 @@ from urllib.parse import urlparse
 
 import httpx
 import streamlit as st
+from pathlib import Path
 
+import graph_tools_viz
 import oxigraph_series_chart
+import technical_doc_view
 
 BACKEND = os.environ.get("MPR_BACKEND_URL", "http://127.0.0.1:8000")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+VIEW_CHATBOT = "Chatbot"
+VIEW_KNOWLEDGE_GRAPH = "Knowledge Graph"
+VIEW_TECHNICAL = "Technical documentation"
 
 
-def _unpack_message(entry: tuple) -> tuple[str, str, list[str]]:
+def _unpack_message(entry: tuple) -> tuple[str, str, list[str], list[dict]]:
     """
-    Legacy: (role, content). Assistant with Oxigraph replot: (assistant, content, series_iris: list[str]).
+    User: (role, content).
+    Assistant: (assistant, content) or (..., series_iris: list[str]) or (..., series_iris, status_trace: list[dict]).
     """
-    if len(entry) >= 3 and entry[0] == "assistant":
+    role = entry[0]
+    content = entry[1] if len(entry) > 1 else ""
+    series_iris: list[str] = []
+    trace: list[dict] = []
+    if role == "assistant" and len(entry) >= 3:
         extra = entry[2]
         if isinstance(extra, list) and all(isinstance(x, str) for x in extra):
-            return entry[0], entry[1], extra
-        return entry[0], entry[1], []
-    return entry[0], entry[1], []
+            series_iris = extra
+        if len(entry) >= 4:
+            t = entry[3]
+            if isinstance(t, list):
+                trace = [x for x in t if isinstance(x, dict)]
+    return role, content, series_iris, trace
 
 
-def _render_assistant_message(content: str, series_iris: list[str]) -> None:
+def _render_assistant_message(
+    content: str,
+    series_iris: list[str],
+    *,
+    status_trace: list[dict] | None = None,
+) -> None:
+    trace = status_trace or []
+    if trace:
+        with st.expander("Agent steps (saved)", expanded=False):
+            for payload in trace:
+                step = payload.get("step", "")
+                st.markdown(f"**{step}** — `{json.dumps(payload, indent=0)[:1200]}`")
     render_assistant_reply(content)
     to_plot = [x for x in dict.fromkeys(series_iris) if (x or "").strip()]
     if not to_plot:
@@ -227,87 +254,126 @@ section[data-testid="stChatMessage"] div[data-testid="stMarkdownContainer"] {
 )
 st.title("Federal Reserve MPR Agent")
 
-with st.sidebar:
-    st.subheader("Model")
-    _model_help = (
-        "Backend default when unset: `ANTHROPIC_MODEL` in `.env` (`sonnet` or `haiku`), else Haiku. "
-        "This control overrides that for each chat request."
-    )
-    model_preset = st.radio(
-        "Claude",
-        options=["sonnet", "haiku"],
-        format_func=lambda m: (
-            "Sonnet 4.6 — stronger" if m == "sonnet" else "Haiku 4.5 — lower cost (default)"
-        ),
-        index=1,
-        key="mpr_claude_model",
-        help=_model_help,
-    )
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-for entry in st.session_state.messages:
-    role, content, series_iris = _unpack_message(entry)
-    with st.chat_message(role):
-        if role == "assistant":
-            _render_assistant_message(content, series_iris)
-        else:
-            st.markdown(normalize_assistant_markdown(content))
+model_preset = "haiku"
+with st.sidebar:
+    st.subheader("Navigate")
+    current_view = st.radio(
+        "Primary view",
+        options=[VIEW_CHATBOT, VIEW_KNOWLEDGE_GRAPH, VIEW_TECHNICAL],
+        index=0,
+        key="mpr_primary_view",
+        label_visibility="collapsed",
+    )
+    if current_view == VIEW_CHATBOT:
+        st.subheader("Model")
+        _model_help = (
+            "Backend default when unset: `ANTHROPIC_MODEL` in `.env` (`sonnet` or `haiku`), else Haiku. "
+            "This control overrides that for each chat request."
+        )
+        model_preset = st.radio(
+            "Claude",
+            options=["sonnet", "haiku"],
+            format_func=lambda m: (
+                "Sonnet 4.6 — stronger" if m == "sonnet" else "Haiku 4.5 — lower cost (default)"
+            ),
+            index=1,
+            key="mpr_claude_model",
+            help=_model_help,
+        )
+    elif current_view == VIEW_KNOWLEDGE_GRAPH:
+        graph_tools_viz.render_knowledge_graph_sidebar()
+    else:
+        st.markdown(
+            "Architecture, **dual-RAG** methodology (vector + knowledge graph), and the **RDF** model "
+            "the SPARQL tools expect. Source file: `doc/TECHNICAL.md`."
+        )
 
-prompt = st.chat_input("Ask about the Monetary Policy Report…")
-if prompt:
-    st.session_state.messages.append(("user", prompt))
-    with st.chat_message("user"):
-        st.markdown(normalize_assistant_markdown(prompt))
+if current_view == VIEW_KNOWLEDGE_GRAPH:
+    st.header(VIEW_KNOWLEDGE_GRAPH)
+    graph_tools_viz.render_knowledge_graph_main()
+elif current_view == VIEW_TECHNICAL:
+    st.header(VIEW_TECHNICAL)
+    st.caption("Methodology, stack, and how Chroma and Oxigraph support the agent. Diagrams render below.")
+    tech_path = REPO_ROOT / "doc" / "TECHNICAL.md"
+    if not tech_path.is_file():
+        st.error(f"Missing `{tech_path}`.")
+    else:
+        technical_doc_view.render_markdown_with_mermaid(tech_path)
+else:
+    st.subheader(VIEW_CHATBOT)
+    st.caption(
+        "Ask about the Monetary Policy Report; the agent uses vector search and SPARQL tools with citations. "
+        "Tool traces are kept under **Agent steps (saved)** on each assistant reply when you switch tabs."
+    )
 
-    with st.chat_message("assistant"):
-        assistant_parts: list[str] = []
-        status = st.status("Agent steps…", expanded=True)
-        pending_macro_sparql: list[str] = []
-        series_iris_to_plot: list[str] = []
-        try:
-            for kind, payload in stream_chat(prompt, model=model_preset):
-                if kind == "status":
-                    ev_type = payload.get("type")
-                    if ev_type == "tool_use" and payload.get("name") == "query_macro_graph":
-                        inp = payload.get("input") or {}
-                        q = inp.get("sparql")
-                        if isinstance(q, str) and q.strip():
-                            pending_macro_sparql.append(q.strip())
-                    elif ev_type == "tool_result" and payload.get("name") == "query_macro_graph":
-                        spq = (
-                            pending_macro_sparql.pop(0)
-                            if pending_macro_sparql
-                            else None
-                        )
-                        iri = oxigraph_series_chart.extract_series_iri_from_macro_sparql(
-                            spq or ""
-                        )
-                        if iri and iri not in series_iris_to_plot:
-                            series_iris_to_plot.append(iri)
-                    step = payload.get("step", "")
-                    status.write(f"**{step}** — `{json.dumps(payload, indent=0)[:800]}`")
-                elif kind == "token":
-                    assistant_parts.append(payload.get("text", ""))
-            status.update(label="Done", state="complete")
-        except httpx.ConnectError as e:
-            status.update(label="Error", state="error")
-            st.error(
-                f"Cannot reach the API at `{BACKEND}` (connection refused). "
-                "Keep the FastAPI server running **in a separate terminal** while you use this app, then retry."
-            )
-            st.code(
-                "uv run --env-file .env python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000",
-                language="bash",
-            )
-            assistant_parts = [f"_(Request failed: {e})_"]
-        except Exception as e:
-            status.update(label="Error", state="error")
-            st.error(str(e))
-            assistant_parts = [f"_(Request failed: {e})_"]
+    for entry in st.session_state.messages:
+        role, content, series_iris, status_trace = _unpack_message(entry)
+        with st.chat_message(role):
+            if role == "assistant":
+                _render_assistant_message(content, series_iris, status_trace=status_trace)
+            else:
+                st.markdown(normalize_assistant_markdown(content))
 
-        final_text = "".join(assistant_parts)
-        _render_assistant_message(final_text, series_iris_to_plot)
+    prompt = st.chat_input("Ask about the Monetary Policy Report…")
+    if prompt:
+        st.session_state.messages.append(("user", prompt))
+        with st.chat_message("user"):
+            st.markdown(normalize_assistant_markdown(prompt))
 
-    st.session_state.messages.append(("assistant", final_text, series_iris_to_plot))
+        with st.chat_message("assistant"):
+            assistant_parts: list[str] = []
+            status = st.status("Agent steps…", expanded=True)
+            status_trace: list[dict] = []
+            pending_macro_sparql: list[str] = []
+            series_iris_to_plot: list[str] = []
+            try:
+                for kind, payload in stream_chat(prompt, model=model_preset):
+                    if kind == "status":
+                        status_trace.append(dict(payload))
+                        ev_type = payload.get("type")
+                        if ev_type == "tool_use" and payload.get("name") == "query_macro_graph":
+                            inp = payload.get("input") or {}
+                            q = inp.get("sparql")
+                            if isinstance(q, str) and q.strip():
+                                pending_macro_sparql.append(q.strip())
+                        elif ev_type == "tool_result" and payload.get("name") == "query_macro_graph":
+                            spq = (
+                                pending_macro_sparql.pop(0)
+                                if pending_macro_sparql
+                                else None
+                            )
+                            iri = oxigraph_series_chart.extract_series_iri_from_macro_sparql(
+                                spq or ""
+                            )
+                            if iri and iri not in series_iris_to_plot:
+                                series_iris_to_plot.append(iri)
+                        step = payload.get("step", "")
+                        status.write(f"**{step}** — `{json.dumps(payload, indent=0)[:800]}`")
+                    elif kind == "token":
+                        assistant_parts.append(payload.get("text", ""))
+                status.update(label="Done", state="complete")
+            except httpx.ConnectError as e:
+                status.update(label="Error", state="error")
+                st.error(
+                    f"Cannot reach the API at `{BACKEND}` (connection refused). "
+                    "Keep the FastAPI server running **in a separate terminal** while you use this app, then retry."
+                )
+                st.code(
+                    "uv run --env-file .env python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000",
+                    language="bash",
+                )
+                assistant_parts = [f"_(Request failed: {e})_"]
+            except Exception as e:
+                status.update(label="Error", state="error")
+                st.error(str(e))
+                assistant_parts = [f"_(Request failed: {e})_"]
+
+            final_text = "".join(assistant_parts)
+            _render_assistant_message(final_text, series_iris_to_plot, status_trace=status_trace)
+
+        st.session_state.messages.append(
+            ("assistant", final_text, series_iris_to_plot, status_trace)
+        )
