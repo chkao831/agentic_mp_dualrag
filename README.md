@@ -66,6 +66,35 @@ cp .env.example .env
 
 ---
 
+## Demo
+
+### I. Intro (1 min)
+[![I. Intro](https://img.youtube.com/vi/yQ0MQ0_8F5Q/maxresdefault.jpg)](https://youtu.be/yQ0MQ0_8F5Q)
+
+### II. Chatbot Pt.1 (1.5 mins)
+
+- Q. What agent skills do you have?
+- Q. Summarize the 2025 monetary policy in terms of holdings of Treasury securities.
+  
+[![II. Chatbot Pt.1](https://img.youtube.com/vi/mOgJSKOhMcM/maxresdefault.jpg)](https://youtu.be/mOgJSKOhMcM)
+
+### III. Chatbot Pt.2 (1 min)
+
+- Q. Time series over the past 10 years on the nonfuel import price index.
+  
+[![III. Chatbot Pt.2](https://img.youtube.com/vi/2IR_BrtJ-z8/maxresdefault.jpg)](https://youtu.be/2IR_BrtJ-z8)
+
+### IV. Chatbot Pt.3 (1.5 mins)
+
+- Q. Unemployment rate future projection and a summary of it in the Monetary Policy Report.
+  
+[![IV. Chatbot Pt.3](https://img.youtube.com/vi/yE1ERCyt6wU/maxresdefault.jpg)](https://youtu.be/yE1ERCyt6wU)
+
+### V. RDF Knowledge Graph Visualization (1.5 mins)
+[![V. RDF Knowledge Graph Visualization](https://img.youtube.com/vi/AoGtTepW00E/maxresdefault.jpg)](https://youtu.be/AoGtTepW00E)
+
+---
+
 ## Run the chat app
 
 ```bash
